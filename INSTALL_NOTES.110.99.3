@@ -1,0 +1,182 @@
+Installation guide for Poly Rec under SML/NJ Version 110.99.3 
+-------------------------------------------------------------
+UNFINISHED!  TODO 6.install the heap and 7.link with sml-pr.lib files!
+
+1. You need SML/NJ Version 110.99.3 with compilation manager CMB.
+
+   Follow the instructions in https://github.com/smlnj/legacy/README.md
+   and clone smlnj-110.99.3 into your directory $ROOT
+
+      > git clone git@github.com:smlnj/legacy.git $ROOT
+
+   To get the Bootstrap Compilation Manager (structure CMB) installed,
+   edit $ROOT/config/preloads and uncomment #autoload $smlnj/cmb.cm:
+
+      # The Bootstrap Compilation Manager (structure CMB)
+      autoload $smlnj/cmb.cm
+
+   Go to $ROOT and install the compiler from the sources (steps 2.,3.,5.
+   of https://github.com/smlnj/legacy/README.md).
+
+      > cd $ROOT
+      $ROOT> config/install.sh
+      $ROOT> cd base/system
+      base/system> ./cmb-make ../../bin/sml
+      base/system> ./makeml
+      base/system> ./installml
+      base/system> cd ../..
+      $ROOT> config/install.sh
+
+   You should now have bin and boot directories sml.bin|boot.amd64-unix in $ROOT
+   (and a heap image in $ROOT/bin/.heap/ amd a runtime system in $ROOT/bin/.run/)
+
+2. Clone the polyrec-SML repository to a sibling directory of your $ROOT directory:
+
+      $ROOT> cd ..
+      > git clone https://github.com/hleiss/polyrec-SML.git polyrec-SML
+
+   This file should now be
+
+        polyrec-SML/doc/INSTALL_NOTES.110.99.3
+
+3. Go to the root directory of the compiler:
+
+      > cd $ROOT/base/compiler/
+
+   Save the file core.cm describing how to build the original compiler
+
+      base/compiler> cp -p core.cm core.cm.orig
+      base/compiler> chmod ugo-w core.cm.orig
+
+   and replace it by the one in polyrec-SML:
+
+      base/compiler> cp ../../../polyrec-SML/core.polyrec.cm core.cm
+        
+   [This amounts to replace lines in core.cm as follows:
+     TopLevel/main/control.sig  =>  ../../../polyrec-SML/control.polyrec.sig
+     TopLevel/main/control.sml  =>  ../../../polyrec-SML/control.polyrec.sml
+
+    You may edit core.polyrec.cm to also make the replacement
+     FLINT/opt/specialize.sml   =>  ../../../polyrec-SML/specialize.polyrec.sml
+    to make Example5 of polyrec-SML/examples.sml work.]
+
+4. Save the file describing how to build the original elaborator:
+
+      base/compiler> cp -p Elaborator/elaborate.cm Elaborator/elaborate.cm.orig
+      base/compiler> chmod ugo-w Elaborator/elaborate.cm.orig
+        
+   and replace it by the modification in polyrec-SML:
+   
+      base/compiler> cp ../../../polyrec-SML/elaborate.polyrec.cm Elaborator/elaborate.cm
+
+   (This is to ignore Elaborator/control/elabcontrol.sml|sig and instead use
+    elabcontrol.polyrec.sml|sig and other files provided in polyrec-SML/, and adds
+    Semiunify:SEMIUNIFY and PPTypelist:PPTYPELIST to the Group of elaborator modules.)
+[
+5. Now recompile the compiler with some source files exchanged by those of polyrec-SML
+
+        cd ../system
+        base/system> ./cmb-make
+
+   This builds a new boot directory sml.boot.<architecture>-unix. (Call it sml-pr.boot...?)
+
+   Using this boot directory(??), create new bin- and boot-files with prefix "sml-pr"
+   instead of "sml":
+
+        base/system> ./makeml -rebuild "sml-pr" -boot sml.boot.<architecture>-unix
+]
+   Create new bin- and boot-files (from the modified sources) with prefix "sml-pr"
+   instead of "sml":
+
+        base/system> ./makeml -rebuild "sml-pr" 
+
+   Then new directories (in base/system) are
+   
+            sml-pr.bin.<architecture>-unix        [22M for amd64]
+            sml-pr.boot.<architecture>-unix       [18M for amd64]
+
+5. Using these, create a heap image of the new runtime system with name "sml-pr":
+
+        base/system> ./makeml -boot sml-pr.boot.amd64-unix -o "sml-pr"
+
+   This ends in showing the banner of the new runtime system
+
+            SML of New Jersey [Poly Rec] (64-bit) v110.99.3 [built: <date>]
+
+   The heap image is sml-pr.amd64-linux with library files in sml-pr.lib.
+
+   [If you change in testml HEAP_IMAGE=sml to HEAP_IMAGE=sml-pr, you can test
+    the new system with ./testml ]
+
+------------------------------------------------------------------------
+TODO: We still have to (6) install the new heap image and
+      (7) rebuild the new libraries sml-pr.lib
+
+6. Move the heap image to the bin-directory of smlnj-110.99
+
+	base/system> mv sml-pr.<architecture> ../../bin/.heap/.
+
+   Go to the bin-directory and create a symbolic link as follows:
+
+	base/system> cd ../../bin 
+        bin> ln -s .run-sml sml-pr
+  
+==== How to install the new libraries? Modify installml and install.sh 
+==== and use these? (see Step 5 of the instructions of legacy/Readme.md)
+
+7. Now you can call 
+
+        bin> ./sml-pr
+
+   and use SML/NJ with the modified type checker.
+
+   ERROR: Executing Control.usepoly() results in a bug, probably because
+   we have not linked with the correct library files:
+
+- Control.usepoly();
+[autoloading]
+[library $smlnj/compiler/current.cm is stable]
+[library $smlnj/compiler/amd64.cm is stable]
+[library $smlnj/viscomp/core.cm is stable]
+[library $smlnj/viscomp/basics.cm is stable]
+[library $smlnj/viscomp/elabdata.cm is stable]
+[library $smlnj/viscomp/elaborate.cm is stable]
+[library $compiler/(core.cm):Library/const-arith/sources.cm is stable]
+Error: Compiler bug: UnpickMod: stub lookup failed for type constructor in $smlnj/init/init.cmi@144922(pervasive.sml): m = (0, structure <Pervasive>), i = <moduleId>
+
+a. Maybe I have to use sml.amd64-bit
+b. base/system> ls -l . shows a change in flint.core
+   But legacy> git status says
+    - that flint.core is an unversioned file. So I can remove it!
+    - that config/preloads has been changed
+------------------------------------------------------------------------
+
+   See polyrec/doc/USER_MANUAL on how to switch between the type
+   systems or how to inspect type inference in Poly Rec.
+
+TODO: Test if we can now use Control.usepoly() !
+
+8. If the installation is finished, you may wish to restore the original
+   system by overwriting the modified .cm files by their original versions:
+
+	base/compiler> cp -p core.cm.orig core.cm
+	base/compiler> cp -p Elaborator/elaborate.cm.orig Elaborator/elaborate.cm
+
+
+Hans Leiss, Do 15. Jun 19:16:10 CEST 2023
+
+
+
+
+[
+   You can run
+
+        base/compiler> ./testml
+
+   The new control-flags should now be available at top level:
+
+        (SML/NJ)- usepoly();
+        (SML/NJ)+ usemono();  (* the prompt + indicating PolyRec *)
+
+   Leave SML/NJ by typing ^D (ctrl D).
+]   
