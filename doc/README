@@ -1,0 +1,48 @@
+Contents of the technical reports:
+
+1.Correctness proof: 
+	
+	polyrec.cisbericht.95-88.ps.gz
+
+  This file contains a detailed correctness proof for the 
+  earlier version 1.3 of the type checker. The current 
+  version (1.5) gives a different treatment of the `mono-
+  morphic constraints': (cf.user manual)
+
+  These are now recorded when passing a declaration, with 
+  the effect that the typing of variables no longer adds
+  constraints that may be withdrawn when typing enclosing 
+  lambda-bindings. 
+
+  Thus the correctness of the lambda case would be much 
+  *simpler* for the current version.
+
+  A short version of this report will soon appear in 
+  Theoretical Computer Science, 199?.
+
+2.Documentation of the implementation: 
+
+	polyrec.cisbericht.95-88.ps.gz
+
+  This also refers to an earlier version (1.1); it gives
+  detailed information about how the SML/NJ 0.93 type checker
+  worked and how it was modified. Documents the functions
+  added for handling semiunification constraints and the 
+  modifications of the type checker.
+
+  However, SML/NJ Version 110 has changed the datatypes
+  of types somewhat, and the code of Poly Rec acounts for
+  that and has been improved (to remove bugs found while
+  doing the correctness proof). Performance is somewhat
+  worse than reported in Section 6, because of additional 
+  checks needed for the correctness.
+
+3.Examples:
+
+	polyrec.threeExpls.dvi.gz
+
+  contains a treatment of three examples where the constraint
+  solving is done by hand. (Written before the implementation
+  was made).
+  
+H.Leiss, Wed Mar 25 12:09:16 MET 1998

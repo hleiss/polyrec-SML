@@ -1,0 +1,6 @@
+1. Write an arity-check to avoid the compiler bug being raised.
+
+This must only be applied after the top-level semiunification problem
+is solved, since for embedded declaration, a variable range type may
+be instantiated to a function type when typing some enclosing
+definition, and this could raise the arity of the embedded function.

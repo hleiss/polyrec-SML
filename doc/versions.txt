@@ -1,0 +1,123 @@
+Poly Rec, Version History: (only 1.5 is available for SML/NJ 110)
+-------------------------
+Version 1.1:
+This original version of code in this directory was written by:
+
+Martin Emms
+
+as part of the project `Semiunifikation', supported by the Deutsche
+Forschungsgemeinschaft under grant Le 788/1-2.
+
+Version 1.2
+
+A bug in the code was found while performing a correctness
+proof. (Correctness of typing was provable only for programs where all
+recursive declarations were top level and did not contain embedded
+declarations.) This has been corrected and a trace facility for the
+solving of semiunification problems during type checking has been
+added.
+
+The correctnes of this version of the type checker (without a
+correctness of the implementation of semiunification) is proven in
+detail in a forthcoming paper:
+
+  M.Emms, H.Leiss: An extension of the SML typechecker by polymorphic 
+                   recursion - A correctness proof', Feb. 1997
+
+The code differs from the proof in two minor aspects:
+
+- while the proof assumes that W+(Env,expression) outputs a semi-
+  unification problem L (in addition to a substitution S and type tau), 
+  the code updates a global semiunification problem (in order not to 
+  change types of the typeckeck module) 
+- the code generalizes type variables by relying on attibutes (depth) 
+  of the type variables, which amounts to an implicit environment.
+
+NOTE: the documentation doc.dvi has not been changed and is therefore not
+  completely in accordance with the code and the algorithm as described
+  in the forthcoming paper. 
+
+
+Version 1.3: 
+
+Some improvements on Version 1.2 have been made for better performence,
+and the viewing facility has been refined. (Removed versions 1.1 and 1.2)
+
+H.Leiss, 14.April, 1997
+
+
+Version 1.4:
+
+This is an alternative implementation that does not add unnecessary
+constraints when typing variable occurrences, and hence the
+subtraction of constraints in the lambda-case is superflous.
+
+Instead, schematic constraints are added after a val-declaration has
+been treated, and while a val-rec-declaration is being typed. These
+constraints `tyvar <f,0 tyvar' for val-bound f and tyvar's in the
+context of the declaration of f are stated with relations indexed by f
+and dummy number 0 (since the proper occurrence numbers of f are not
+known yet). During constraint solving, they are treated as inequations
+`tyvar <f,i tyvar' for all ccurences i>0 of f.
+
+This seems more natural than the nonmonotonic handling of constraints
+in version 1.3 and seems also more reasonable if one would use better
+data structures for constraints (c.f.Henglein's semiunification
+graphs).  The reason for using inequation *lists* here was that this
+leaves the datatypes of terms and types and unification of types
+untouched. (Parsing is also slightly faster with Version 1.4.) It also
+allows to preserve the ordering of constraints while solving them,
+making the constraint solving comprehendable via inspection.
+
+H.Leiss, Oct.1997
+
+
+Version 1.5:
+
+By changing the organization of constraints as sketched below, the
+parsing and typing phase is improved considerably, so that on ordinary
+ML code it takes about twice the time that the original SMLNJ type
+checker took. 
+
+- The constraints of the form `tyvar <f,0 tyvar' of version 1.4 are no
+  longer added to the inequation system. Instead, a separate list
+  'monoConstraints' is maintained which stores to a declared variable 
+  (a ref to) the list of type variables in lambda-assumptions of the
+  context. This list is shared among all simultaneously declared variables.
+
+- Reduction red2 is changed as follows: when solving the inequation
+  constraints, these `monoConstraints' are used to solve inequations of
+  the form `tyvar <f,i ty': if one finds tyvar on the monoConstraints
+  for f, then the inequation is solved by unifying tyvar with ty
+  (i.e. tyvar is treated as monomorphic); otherwise the inequation is
+  already solved.
+  Consequently, searching through the inequations to find equations
+  `tyvar <f,0 tyvar' can be avoided in red2.
+
+- A bug in reduction rule 3 has been fixed: after a unification is made,
+  one has to reduce the full system, not only the remaining part.
+
+H.Leiss, Feb.1998
+
+Adaption to SML/NJ Version 110:
+ 
+- The new LITERAL etc. types are treated by semiunification in red1
+  (decomposing compound types), so that an inequation 
+
+    int.L  <f,i  ty      (LITERAL integer, i.e. one of various int types)
+
+  is solved if int.L unfies with ty. 
+
+- The typechecker no longer performs a generalization step in a rec dec,
+  but -according to the modification in the SML/NJ-typecheck source-,
+  at the enclosing val declaration.
+
+- When solving inequations, in those of the form (tyvar <f,i ty) the depth
+  of type variables in ty is lowered to that of tyvar (in red1a). This 
+  corrects a bug in generalising types of embedded simultaneous recursive
+  definitions (the coding of the `specialized' variables in the correctness
+  proof via copying depths was not sufficient.)
+
+H.Leiss, March 1998
+
+  

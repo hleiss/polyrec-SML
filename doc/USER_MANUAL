@@ -1,0 +1,271 @@
+User Manual for Poly Rec, Version 1.5 under SML/NJ Version 110.0.3
+-------------------------------------------------------------------
+INTRODUCTION
+
+`sml-pr' allows you to switch back and forth between compilation
+with a typechecking for two type systems:
+
+- the Damas-Milner type system with Monomorphic Recursion, or
+- the Milner-Mycroft type system with Polymorphic Recursion.
+
+In the first system, *in its defining expression* recursion variables
+must have the same type as the defining expression, while in the
+second they may use different instances of the type of the defining
+expression. (cf. examples.sml)
+
+
+This note explains the user-control features and error messages.
+
+(See doc/*.ps for some theoretical background and extensive
+documentation of a first implementation made in July 1995.)
+
+
+DEFAULT TYPE SYSTEM: Poly Rec
+
+By default the interactive system is initially set to use Polymorphic
+Recursion. This will be reflected by the replacement of the standard
+`- ' prompt with `+ '. Thus on executing the interactive binary
+`sml-pr', the user should obtain:
+
+Standard ML of New Jersey, Version 110.0.3, January 30, 1998 [Poly Rec] 
++  
+
+SWITCHING BETWEEN THE TYPE SYSTEMS
+
+There are two nullary functions to switch the typechecker from using
+the Milner-Mycroft- to using the Damas-Milner-type system and conversely.
+The following session illustrates these. 
+
++ fun f x = f 1;                [The `+ ' prompt indicates that polymorphic 
+val f = fn : 'a -> 'b            recursion (Milner-Mycroft) is used]
++ 
++ Compiler.Control.CG.usemono();  [Switch to the standard Damas-Milner system]
+val it = unit
+-                               [The `- ' prompt indicates that monomorphic
+- fun f x = f 1;                 recursion of the standard is used.]
+val f = fn : int -> 'a
+- 
+- Compiler.Control.CG.usepoly();  [Switch back to polymorphic recursion.]
+val it = unit;
++ 
++ fun f x = f 1;
+val f = fn : 'a -> 'b
++
+
+
+SEMIUNIFICATION CONSTRAINTS (see also doc.dvi or literature)
+
+During type inference, a system S of type inequations is maintained.
+It is transformed to solved form when typing a recursive declaration. 
+Solving S is done by `semiunification'.
+
+A type inequation (ty <f n ty') is indexed by a recursion variable f
+in the program and an integer n. The inequation constraints the type
+of the n-th occurrence of a recursion variable in the program, which
+is an occurrence of f (Note that f depends on n, not conversely).
+
+Semiunify tries to find a substitution U and H1,...,Hn,... such that 
+
+     Hn(U(ty)) = U(ty')  for each  ty  <f n  ty'  in system S.
+
+U(ty) then is the type of f's defining term, U(ty') the type of the
+occurrence n of f in its definition. 
+(For embedded declarations, individual variables named <InternalVar>
+are used to name bound variables from hidden local-declarations.)
+
+Numbers and labels are preserved when an inequation is decomposed or
+substitutions are applied to it during the constraint solving process.
+
+At declarations, `monoconstraints', i.e. type inequations of the form
+
+	(ty  <n varname  ty)       with n=0
+
+are added to the constraints, where ty is a type(variable) of some
+lambda-bound individual variable in the context of the declaration of
+`varname'. These `monoconstraints' force the matcher Hn for inequation
+<n to treat all variables in ty as non-generic; they are treated as 
+
+	(ty  <n varname  ty)     for all n>0,
+
+i.e. as constraints to be satisfied for *all* occurrences of the
+recursion variable `varname' in the defining expression.
+
+
+ERROR MESSAGES
+
+The semiunifier code generates two new kinds of error message. 
+
+a) `Function clash' error: This is illustrated by 
+
++ val rec f = fn x => (f 1 = 1; f "a" = "a"; 1);
+stdIn:1.1-11.8 Error: function clash in semiunification 
+  problem inequation
+  (int  <2 f  string)
+  
+  in current system
+  ('Z -> int  <2 f  string -> string)
+  ('Z -> int  <1 f  int -> int)
+  
+  in declaration:
+    val rec f = (fn x => (<exp>; <exp>; <exp>))
+
+The `current system' are the semiunification constraints to be
+solved for typing the recursive declaration. 
+
+The `problem inequation' (obtained by decomposition of the topmost
+inequation in the `current system') is the one that is found to be
+unsolvable: there is no type substitution h2 with h2(int)=string.
+
+
+b) `Extended occurs check' error: This is illustrated by
+
++ val rec f = fn x => f;
+stdIn:1.1-2.21 Error: extended occurs check failure in semiunification
+  problem inequation
+  ('Z -> 'Y  <1 f  'Y)
+  
+  in current system
+  ('Z -> 'Y  <1 f  'Y)
+  
+  in declaration:
+    val rec f = (fn x => f)
++ 
+There are no types 'Z and 'Y with a type substitution h1 such that
+h1('Z -> 'Y) = 'Y. In general, it has to be checked that there is
+no occurrence
+
+   compound_type('Y)  <1 f1  .... <2 f2 ...  <n fn  'Y
+
+`extended' through a chain of inequations.
+
+c) `Instantiability' error: this is illustrated by
+
+fun f x y = fn z => (x = (z,y,z); f ("a",y,3));
+stdIn:1.1-3.9 Error: instantiability failure in semiunification:
+  (instances of same tyvar in <1 don't unify)
+  problem inequation
+  (''Z * ''Z  <1 f  string * int)
+  
+  in current system
+  (''Z * ''Y * ''Z -> ''Y -> ''Z -> 'X  <1 f  string * ''Y * int -> 'X)
+  
+  in declaration:
+    val rec f = (fn arg => (fn <rule>))
++ 
+It is impossible to define a matcher H1 for inequation <1 of the
+current system, as the two potential values string and int for H1(''Z)
+do not unify. Two occurrences of the relevant tyvar and their con-
+flicting images under the matcher are paired and shown as the `problem 
+inequation'.
+
+
+VIEWING THE SEMIUNIFICATION CONSTRAINT SOLVING
+
+Inspection of the inequation constraints is tuned by two flags
+whose initial values, set in polyrec/control.sml, are:
+
+	Compiler.Control.CG.viewsemi = ref 1
+	Compiler.Control.CG.showsemi = {Var    = ref 3,
+                                      Rule   = ref 5,
+                                      Let    = ref 4,
+                                      Valrec = ref 1,
+                                      Step   = ref 2}
+
+The polyrec-typechecker code contains several conditionals like 
+
+	if (!Compiler.Control.CG.viewsemi) > 
+	   (!(# Valrec Compiler.Control.CG.showsemi)
+        then <show information about constraints 
+	      at recursive value bindings>
+	else <don't show the information>
+
+You may change the initial values. For example, evaluating
+
+	Compiler.Control.CG.viewsemi := 2    (* a resonable choice *)
+
+allows one to view the semiunification process at each recursive
+declaration, since the Valrec field is 1. At a recursive declaration
+`fun f y = ...' of a variable f, the type checker then asks
+	
+	Show recursive value case for:
+	val rec f = (fn y => <exp>) ?
+
+On answering `y', the inequation constraints are shown and then you
+are asked
+
+	Step through solving the inequations? 
+
+On answering `y', after each step of rewriting of the semiunification
+problem the type checker will mention the reduction used, i.e.
+
+	by Reduce1 with <n (decompose types)
+	by Reduce1a with <n (overloaded or monomorphic var on lhs)
+	by Reduce2 with <n (unify rhs of two <n ineqns with equal lhs var)
+	by Reduce3 with <n (unify a copy of non-var lhs wiht var rhs)
+
+and subsequently ask
+
+	`print ?' 
+
+On answering `y', the result, and the current `rulebound types' are
+shown, i.e. the type variables that occur in types of lambda-bound
+individual assumptions (resp. an instantiation into these).
+
+You can also 
+- say `n' to skip viewing the constraints of a declaration
+- say `n' to skip printing the result of a reduction step,
+- say `stop' to stop stepping and switch off viewsemi.
+
+
+VIEWING THE ESTABLISHING OF SEMIUNIFICATION CONSTRAINTS
+
+To see how the constraints arise when typing an occurrence of a
+(recursion) variable, set 
+
+	(# Var Compiler.Control.CG.showsemi) := n
+
+for some n < (!Compiler.Control.CG.viewsemi). Similarly with fields Let and
+Rule for information about typing of let-expressions or abstractions.
+
+
+DEBUGGING semiunification: 
+
+A detailed correctness proof for [Poly Rec] has been made for the
+SML/NJ 0.93 version, which therefore can be expected to reflect
+Milner-Mycroft typability properly. In SML/NJ Version 110, the type
+variables are classified into
+	
+	INSTANTIATED, OPEN, UBOUND, LITERAL, SCHEME, LBOUND,
+
+the latter three new over Version 0.93. The changes I made to the
+semiunifier code to handle these kinds of type variables may have
+introduced bugs - though I am not aware of any. (But note the arity
+problem described in `arity-problem.doc').
+
+Should an unsolved inequation remain unrecognized by the modified
+semiunification, a compiler bug message might be raised. It is then
+useful to view the semiunification inequations by first setting
+
+	Compiler.Control.debugging := true.
+
+This will effect that type variables 'X and constants like int
+(i.e. type variables of class LITERAL) will be printed in greater
+detail, in particular mentioning its class. Types pretty printed the
+same before may now show to be distinct, for example
+
+	'X.M[2]  is  'X  as free ('META') tyvar at depth 2,
+	'X.S[3]  is  'X  as schematic tyvar at depth 3,
+
+	int.L    is  int as LITERAL tyvar (ranging over int.31, ...),
+  	int[D;Int31.int[D;int[GP;#S:int.0;YES]]] 
+		 is  int as int.31 (via user constraint).
+
+In case you run into bugs or problems with [Poly Rec], please send a
+message to:
+
+Hans Leiss (leiss@cis.uni-muenchen.de) 	      Tue Mar 24 17:08:11 MET 1998
+---------------------------------------------------------------------- End
+
+
+
+

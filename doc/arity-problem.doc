@@ -1,0 +1,107 @@
+ARITY RESTRICTION OF POLYMORPHIC RECURSION.    H.Leiss, 13.3.98
+------------------------------------------
+Under polymorphic recursion, some expressions are typable that
+SML/NJ 110 [Poly Rec] does not accept, but SML/NJ 0.93 [Poly Rec]
+did accept. SML/NJ'110 then reports
+
+	'Compiler bug: LambdaType: unexpected case in tcd_arw'
+
+The reason is explained below. One could implement a restriction
+of polymorphic recursion that would instead report some
+
+	'arity mismatch in recursive definition of <function>'
+
+The restriction would (most likely) only forbid polymorphic
+recursions of functions that loop anyway.
+
+
+EXAMPLE: Consider `recursive self-application', rec f.(f f), i.e.
+
+PolyRec'93: 
++ fun f x = f f x;
+> val f = fn : 'a -> 'b
+
+PolyRec'110: 
++ fun f x = f f x;
+>
+for the type:
+TV(1,1)
+Error: Compiler bug: LambdaType: unexpected case in tcd_arw
+
+uncaught exception LtyArrow
+  raised at: basics/ltyenv.sml:481.48-481.56
+
+The bug is caused by the fact that the intermediate language of
+SML/NJ'110 is typed while that of SML/NJ'93 is not. Essentially,
+the translation to the intermediate language in SML/NJ'110 gives
+
+	FIX(f : TV(1,0) -> TV(1,1) :: 
+	    FN(x : TV(1,0), APP(FN(y : TV(1,0), APP(APP(f,f),y)),x))
+        IN  f)
+
+while that in SML/NJ'93 gives 
+
+        FIX(f: FN(x, APP(FN(y,APP(APP(f,f),y)),x))
+        IN  f)
+
+Later on, the SML/NJ'110 compiler tries to decompose the given output
+type variable TV(1,1) of f into domain and range type, at the application
+APP(APP(f,f):TV(1,1),y) - this is the unexpected case in tcd_arw.
+
+However, this all does not mean that the intermediate language of
+SML/NJ'110 relies on monomorphic recursion. But it imposes a certain
+*arity restriction* on polymorphic recursive definitions:
+
+(AR)  	In a recursive definition of f, no type of an occurrence of f 
+  	must have more input arguments than the defining term.
+
+In the example, fun f x = f f x, the defining term (fn x => f f x) has
+one argument, while the first occurrence of f has two. The bug occurs 
+as well for simpler definitions like fun f x = f 0 1.
+
+REMARK 1: It seems clear that this arity restriction of polymorphic
+recursion does not exclude any of the useful examples, but only
+pathological (diverging) ones. 
+
+REMARK 2: It seems also possible to detect those polymorphic recursive
+definitions that raise the compiler bug. Namely, after solving the
+semiunification constraints, one has to check whether the solved
+system of inequations contains some
+
+	'a < sigma -> tau
+
+where 'a is a variable(!) range type of a recursive function f. (The
+inequation then means that some term (f t1 ... tn):'a is used as a
+function, i.e. that f has (n+1) arguments.)
+To this end, one has to propagate the notion of `range type (variable)'
+from the type of the defining term (before the constraints get solved)
+through the constraint solving process.
+
+REMARK 3: The restriction sketched in remark 3 would exclude also some
+recursive definitions that do not cause the compiler bug, like
+
++ fun f x = (map (f 0) ["a"]; f x); 
+> val f = fn : 'a -> 'b
+
+Here, map forces f to have a range type int -> string -> 'X, but since
+(f 0) is not applied, the intermediate language need not decompose the
+range type variable 'b into domain and range. (Again, f is diverging.)
+
+
+REMARK 4: In some embedded contexts, PolyRec'110 still can infer the 
+type of rec f.(f f):
+
++ let fun f x = f f x in 0 end;
+> val it = 0 : int
+
+The above compiler bug is not raised here, because after translation
+of the typed expression into intermediate language, the expression is
+contracted and specialized, at which stage the local definition of f
+is thrown away. Switching off specialization by
+
++ Compiler.Control.CG.specialize := false 
+
+will produce the bug for the embedded declaration as well.
+
+(Setting the flag Compiler.Control.CG.printLambda:=true shows the full
+translation.)

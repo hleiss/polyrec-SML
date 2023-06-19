@@ -1,0 +1,72 @@
+Installation guide for Poly Rec under SML/NJVersion 110.0.3
+-----------------------------------------------------------
+
+1. You need SML/NJ Version 110 with sources and compilation manager CMB. 
+
+   If you don't have the compilation manager installed, use SML/NJ's
+   config/install.sh and config/targets to install it with target 
+   sml-full-cm. 
+
+2. If you have unpacked the distibution tar-file of PolyRec in the
+   root directory of SML/NJ (called <sml-97> below), this file is now 
+
+	<sml-97>/polyrec/doc/INSTALL_NOTES
+
+3. Go to the root directory of the compiler:
+
+	> cd <sml-97>/src/sml-nj  
+
+   Save the file describing how to build the original compiler:
+
+	src/sml-nj> mv all-files.cm all-files.cm.orig
+
+   and replace it with the one describing how to build the compiler with 
+   Poly Rec:
+
+	src/sml-nj> cp ../../polyrec/all-files.cm all-files.cm
+
+4. Now call the batch compiler in the root directory of the compiler:
+
+	src/sml-nj> ../../bin/sml-cm    (resp. ../../bin/sml-full-cm)
+
+   With the batch compiler SML/NJ [CM&CMB], evaluate
+
+	CMB.make();  
+
+   This will recompile the compiler sources with some source files exchanged 
+   by those of the polyrec directory (cf. all-files.cm), and generate new .bin 
+   files. Having finished, leave the batch compiler by evaluating
+
+	^D
+
+5. The new bin-files have to be loaded into an empty run-time system and
+   combined in a heap image. Copy
+
+	src/sml-nj> cp ../../polyrec/doc/xmakeml-polyrec .
+
+   to the source directory of the compiler and execute it, to create a heap
+   image with the name "sml-pr" (or any other you like):
+
+	src/sml-nj> xmakeml-polyrec -o sml-pr   
+
+6. Step 5 generates a heap image  sml-pr.<architecture>. Move it to the 
+   bin-directory 
+
+	src/sml-nj> mv sml-pr.<architecture> ../../bin/.heap/.
+	src/sml/nj> cd ../../bin 
+
+   and create a symbolic link as follows:
+
+        bin> ln -s .run-sml sml-pr
+  
+7. Now you can call 
+
+        bin> sml-pr
+
+   and use  SML/NJ Version 110 [Poly Rec]. See polyrec/doc/USER_MANUAL 
+   on how to switch between the type systems or how to inspect type 
+   inference in Poly Rec.
+
+   You may wish to restore the original all-files.cm
+
+H.Leiss, Tue Mar 24 19:59:17 MET 1998
