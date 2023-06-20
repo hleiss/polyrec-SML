@@ -25,9 +25,9 @@ explained in doc/aritiy-problem.doc, the reason is that smlnj-110
 translates expressions of the abstract syntax to an intermediate
 language FLINT, which does its own type-based optimizations. However,
 the suggested fix in doc/arity-problem.doc is insufficient: a bug is
-raised not only for arity mismatches as in `fun f x = f x x', but also
-for arity-correct declarations like `fun f x = f (x,x)' (cf. Example21
-and Example22 of example.sml).
+raised not only for arity mismatches as in `fun f x = f x x`, but also
+for arity-correct declarations like `fun f x = f (x,x)` (cf. Example22
+and Example23 of example.sml).
 
 Hans Leiß, June 20, 2023. h.leiss (at) gmx.de
 

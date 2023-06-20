@@ -830,7 +830,7 @@ ML: Error: operator and operand don't agree [circularity]
     f f
 
 
-structure Example22 =
+structure Example23 =
   struct
     fun f x = f (x,x)
   end
